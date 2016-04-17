@@ -3,6 +3,11 @@ package com.careydevelopment.twitterlaughs;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -18,6 +23,8 @@ import com.careydevelopment.propertiessupport.PropertiesFactory;
 import com.careydevelopment.propertiessupport.PropertiesFactoryException;
 import com.careydevelopment.propertiessupport.PropertiesFile;
 
+import twitter4j.JSONException;
+import twitter4j.JSONObject;
 import twitter4j.ResponseList;
 import twitter4j.Status;
 import twitter4j.Twitter;
@@ -31,6 +38,7 @@ public class TwitterLaughs {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TwitterLaughs.class);
 	
 	private static final String COMEDIANS_FILE = "/etc/tomcat8/resources/comedians.properties";
+	private static final String EMBED_URL_PREFIX = "https://api.twitter.com/1.1/statuses/oembed.json?id=";
 	
 	private static TwitterLaughs INSTANCE;
 	private Twitter twitter;
@@ -83,8 +91,6 @@ public class TwitterLaughs {
 	
 	
 	public List<String> getLaughs() throws TwitterLaughsException {
-		List<String> ids = new ArrayList<String>();
-		
 		//set the date to two days ago
 		setDate();
 		
@@ -94,25 +100,30 @@ public class TwitterLaughs {
 		//get the tweets from each comedian
 		List<Status> tweets = getFunnyTweets(comedians);
 		
-		/*for (Status status : tweets) {
-			LOGGER.info(status.getText() + " " + status.getRetweetCount());
-		}*/
+		List<String> embeds = getEmbeds(tweets);
 		
-		//translate the tweets into IDs
-		ids = getIdsOfTweets(tweets);
-		
-		return ids;
+		return embeds;
 	}
 
 	
-	private List<String> getIdsOfTweets(List<Status> tweets) {
-		List<String> ids = new ArrayList<String>();
+	private List<String> getEmbeds(List<Status> tweets) throws TwitterLaughsException {
+		List<String> embeds = new ArrayList<String>();
 		
-		for (Status status : tweets) {
-			ids.add((new Long(status.getId()).toString()));
+		try {
+			for (Status tweet : tweets) {
+				String url = getApiUrl(tweet.getId());
+				JSONObject json = readJsonFromUrl(url);
+				String html = json.getString("html");
+				LOGGER.info("HTML is " + html);
+				embeds.add(html);
+			}
+		} catch (JSONException je) {
+			throw new TwitterLaughsException("Problem parsing JSON file!",je); 
+		} catch (IOException ie) {
+			throw new TwitterLaughsException("Problem accessing Twitter API!",ie);
 		}
 		
-		return ids;
+		return embeds;
 	}
 	
 	
@@ -129,6 +140,7 @@ public class TwitterLaughs {
 		
 		return tweets;
 	}
+	
 	
 	/**
 	 * Gets all the tweets for the specified comedian
@@ -171,6 +183,38 @@ public class TwitterLaughs {
 		}
 
 		return tweets;
+	}
+	
+	
+	private String getApiUrl(long id) {
+		StringBuilder builder = new StringBuilder();
+		builder.append(EMBED_URL_PREFIX);
+		builder.append(id);
+		
+		return builder.toString();
+	}
+	
+	
+	private String readAll(Reader rd) throws IOException {
+	    StringBuilder sb = new StringBuilder();
+	    int cp;
+	    while ((cp = rd.read()) != -1) {
+	      sb.append((char) cp);
+	    }
+	    return sb.toString();
+	}
+	  
+	
+	private JSONObject readJsonFromUrl(String url) throws IOException, JSONException {
+	    InputStream is = new URL(url).openStream();
+	    try {
+	      BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
+	      String jsonText = readAll(rd);
+	      JSONObject json = new JSONObject(jsonText);
+	      return json;
+	    } finally {
+	      is.close();
+	    }
 	}
 	
 	
