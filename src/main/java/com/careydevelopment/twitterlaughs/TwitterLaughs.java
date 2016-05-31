@@ -71,10 +71,10 @@ public class TwitterLaughs {
 		try {
 			Properties props = PropertiesFactory.getProperties(PropertiesFile.TWITTER_PROPERTIES);
 			
-			String consumerKey=props.getProperty("brianmcarey.consumerKey");
-			String consumerSecret=props.getProperty("brianmcarey.consumerSecret");
-	    	String accessToken = props.getProperty("brianmcarey.accessToken");
-	    	String accessSecret = props.getProperty("brianmcarey.accessSecret");
+			String consumerKey=props.getProperty("connews.consumerKey");
+			String consumerSecret=props.getProperty("connews.consumerSecret");
+	    	String accessToken = props.getProperty("connews.accessToken");
+	    	String accessSecret = props.getProperty("connews.accessSecret");
 			
 	    	ConfigurationBuilder builder = new ConfigurationBuilder();
 	    	builder.setOAuthConsumerKey(consumerKey);
